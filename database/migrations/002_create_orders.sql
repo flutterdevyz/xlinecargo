@@ -1,0 +1,8 @@
+CREATE TABLE IF NOT EXISTS orders (
+  id SERIAL PRIMARY KEY,
+  product_name VARCHAR(150) NOT NULL,
+  quantity INT CHECK (quantity BETWEEN 1 AND 10),
+  track_code VARCHAR(100) UNIQUE NOT NULL,
+  status VARCHAR(50) DEFAULT 'created',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);

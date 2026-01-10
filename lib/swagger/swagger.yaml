@@ -1,0 +1,232 @@
+openapi: 3.0.0
+info:
+  title: XLineCargo API
+  description: >
+    Dart Shelf yordamida yaratilgan Cargo boshqaruv tizimi API hujjatlari.
+    Barcha himoyalangan yo'llar uchun **Bearer Token** talab qilinadi.
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+
+tags:
+  - name: Auth
+    description: Ro'yxatdan o'tish, login va parolni tiklash amallari
+  - name: Profile
+    description: Foydalanuvchi shaxsiy ma'lumotlari
+  - name: Orders
+    description: Mijozning buyurtmalari bilan ishlash
+  - name: Admin
+    description: Adminlar uchun boshqaruv paneli
+
+paths:
+  # --- AUTHENTICATION ---
+  /auth/user/register:
+    post:
+      tags: [Auth]
+      summary: Yangi foydalanuvchi yaratish
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserRegister'
+      responses:
+        200:
+          description: Muvaffaqiyatli ro'yxatdan o'tdi
+
+  /auth/user/login:
+    post:
+      tags: [Auth]
+      summary: Oddiy foydalanuvchi login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        200:
+          description: Token va role qaytariladi
+
+  /auth/admin/login:
+    post:
+      tags: [Auth, Admin]
+      summary: Adminlar uchun maxsus login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        200:
+          description: Admin tokeni qaytariladi
+        403:
+          description: Foydalanuvchi admin emas yoki ma'lumotlar xato
+
+  # --- PASSWORD RESET ---
+  /auth/user/reset-password/request:
+    post:
+      tags: [Auth]
+      summary: Parolni tiklash uchun so'rov (Email tekshirish)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, example: "ali@example.com" }
+      responses:
+        200:
+          description: Email mavjud, parolni o'zgartirishga ruxsat
+        404:
+          description: Foydalanuvchi topilmadi
+
+  /auth/user/reset-password/confirm:
+    post:
+      tags: [Auth]
+      summary: Yangi parolni tasdiqlash va saqlash
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordResetConfirm'
+      responses:
+        200:
+          description: Parol muvaffaqiyatli yangilandi
+        400:
+          description: Parollar mos kelmadi yoki ma'lumotlar xato
+
+  # --- USER PROFILE ---
+  /profile/user/me:
+    get:
+      tags: [Profile]
+      summary: Profil ma'lumotlarini olish
+      security: [{ bearerAuth: [] }]
+      responses:
+        200:
+          description: Foydalanuvchi obyekti
+
+  /profile/user/name:
+    put:
+      tags: [Profile]
+      summary: Ismni o'zgartirish
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string, example: "Ali Yangi" }
+      responses:
+        200:
+          description: Ism yangilandi
+
+  /profile/user/password:
+    put:
+      tags: [Profile]
+      summary: Parolni yangilash (Profil ichidan)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                new_password: { type: string, example: "newpassword123" }
+      responses:
+        200:
+          description: Parol yangilandi
+
+  # --- ORDERS ---
+  /orders/user/all-order:
+    get:
+      tags: [Orders]
+      summary: Mijozning o'z buyurtmalari
+      security: [{ bearerAuth: [] }]
+      responses:
+        200:
+          description: Buyurtmalar ro'yxati
+
+  /orders/user/create:
+    post:
+      tags: [Orders]
+      summary: Yangi buyurtma yaratish
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderCreate'
+      responses:
+        200:
+          description: Buyurtma saqlandi
+
+  /orders/user/track/{code}:
+    get:
+      tags: [Orders]
+      summary: Track kod orqali qidirish
+      parameters:
+        - name: code
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        200:
+          description: Buyurtma holati
+
+  # --- ADMIN PANEL ---
+  /orders/admin/order/all:
+    get:
+      tags: [Admin]
+      summary: Barcha foydalanuvchilar buyurtmalari (Admin faqat)
+      security: [{ bearerAuth: [] }]
+      responses:
+        200:
+          description: Jami buyurtmalar listi
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    UserRegister:
+      type: object
+      required: [name, email, password]
+      properties:
+        name: { type: string, example: "Ali Valiyev" }
+        email: { type: string, example: "ali@example.com" }
+        password: { type: string, example: "password123" }
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, example: "test@gmail.com" }
+        password: { type: string, example: "123456" }
+
+    PasswordResetConfirm:
+      type: object
+      required: [email, password, confirm_password]
+      properties:
+        email: { type: string, example: "ali@example.com" }
+        password: { type: string, example: "newpassword123" }
+        confirm_password: { type: string, example: "newpassword123" }
+
+    OrderCreate:
+      type: object
+      required: [product, quantity, track_code]
+      properties:
+        product: { type: string, example: "iPhone 15 Pro" }
+        quantity: { type: integer, example: 1 }
+        track_code: { type: string, example: "TR-777-UZ" }
