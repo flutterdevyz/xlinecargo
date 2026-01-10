@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:shelf/shelf.dart';
 import 'package:shelf/shelf_io.dart';
 import 'package:shelf_router/shelf_router.dart';
@@ -9,9 +10,24 @@ import 'package:xlinecargo/routes/admin_routes.dart';
 import 'package:xlinecargo/routes/auth_routes.dart';
 import 'package:xlinecargo/routes/order_routes.dart';
 import 'package:xlinecargo/routes/profile_routes.dart';
+import 'package:xlinecargo/services/user_service.dart';
+import 'package:xlinecargo/utils/password.dart';
 
 void main() async {
   await Database.connect();
+
+  // Admin borligini tekshirish va yaratish
+  if (!await UserService.emailExists('admin')) {
+    print('⚠️ Admin user topilmadi. Yaratilmoqda...');
+    final hash = PasswordUtil.hash('admin123');
+    await UserService.create(
+      name: 'Admin',
+      email: 'admin',
+      password: hash,
+      role: 'admin',
+    );
+    print('✅ Admin user yaratildi: Login: admin, Parol: admin123');
+  }
 
   final apiRouter = Router();
 
@@ -34,6 +50,12 @@ void main() async {
       .addMiddleware(authMiddleware(adminOnly: true))
       .addHandler(AdminRoutes().router));
 
+  // 5. Admin Panel (Web Interface)
+  apiRouter.mount('/admin-panel/', createStaticHandler(
+    'lib/admin_panel/',
+    defaultDocument: 'index.html',
+  ));
+
   // Swagger/Static fayllar
   final staticHandler = createStaticHandler(
     'lib/swagger/',
@@ -46,9 +68,10 @@ void main() async {
       .handler;
 
   // Port va Host sozlamalari
-  final server = await serve(app, '0.0.0.0', 8080);
+  final port = int.parse(Platform.environment['PORT'] ?? '8080');
+  final server = await serve(app, '0.0.0.0', port);
 
-  print('✅ Server ishga tushdi: http://localhost:8080');
+  print('✅ Server ishga tushdi: http://0.0.0.0:$port');
   print('🚀 Siz so\'ragan Order API manzillari:');
   print('   - GET  /orders/user/all-order');
   print('   - POST /orders/user/create');

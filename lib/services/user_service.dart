@@ -30,17 +30,19 @@ class UserService {
     required String name,
     required String email,
     required String password,
+    String role = 'user', // Default 'user'
   }) async {
     final result = await Database.connection.query(
       '''
       INSERT INTO users (name, email, password, role)
-      VALUES (@name, @email, @password, 'user')
+      VALUES (@name, @email, @password, @role)
       RETURNING id
       ''',
       substitutionValues: {
         'name': name,
         'email': email,
         'password': password,
+        'role': role,
       },
     );
     return result.first[0] as int;

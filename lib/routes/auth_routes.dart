@@ -36,8 +36,31 @@ class AuthRoutes {
 
     // 2. ADMIN LOGIN
     router.post('/admin/login', (Request req) async {
-      // ... (Sizning mavjud admin login kodingiz)
-      // Yuqoridagi kodingizni o'zgarishsiz qoldiring
+      try {
+        final body = await req.readAsString();
+        final data = jsonDecode(body);
+        
+        // 1. Email orqali topish (admin login sifatida 'phone_number' kelsa ham 'email' deb qidiramiz yoki moslaymiz)
+        // Eslatma: Frontdan 'phone_number' kelyapti, lekin bazada 'email' bor. 
+        // Admin uchun 'admin' deb kirishni kelishamiz.
+        final login = data['phone_number'] ?? data['email'];
+        
+        final user = await UserService.findByEmail(login);
+
+        if (user == null || !PasswordUtil.verify(data['password'], user['password'])) {
+          return Response.forbidden(jsonEncode({'error': 'Login yoki parol xato'}));
+        }
+
+        if (user['role'] != 'admin') {
+           return Response.forbidden(jsonEncode({'error': 'Siz admin emassiz'}));
+        }
+
+        final token = JwtUtil.generateToken(user['id'], user['role']);
+        return Response.ok(jsonEncode({'token': token, 'role': user['role']}),
+            headers: {'Content-Type': 'application/json'});
+      } catch (e) {
+        return Response.internalServerError(body: 'Admin Login xatosi: $e');
+      }
     });
 
     // 3. ODDIY LOGIN

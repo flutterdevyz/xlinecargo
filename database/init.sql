@@ -8,6 +8,10 @@ CREATE TABLE IF NOT EXISTS users (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+INSERT INTO users (name, email, password, role)
+VALUES ('Admin', 'admin', '$2a$10$tRdPjFxKDqu2bwyc//x7g.MzuWMNW6MvpM3HVVcaXs03A5MhPh5oW', 'admin')
+ON CONFLICT (email) DO NOTHING;
+
 CREATE TABLE IF NOT EXISTS orders (
   id SERIAL PRIMARY KEY,
   product_name VARCHAR(150) NOT NULL,
