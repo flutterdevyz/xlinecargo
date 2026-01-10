@@ -68,10 +68,11 @@ void main() async {
       .handler;
 
   // Port va Host sozlamalari
+  final ip = InternetAddress.anyIPv4;
   final port = int.parse(Platform.environment['PORT'] ?? '8080');
   final server = await serve(app, '0.0.0.0', port);
 
-  print('✅ Server ishga tushdi: http://0.0.0.0:$port');
+  print('✅ Server ishga tushdi: http://${server.address.host}:${server.port}');
   print('🚀 Siz so\'ragan Order API manzillari:');
   print('   - GET  /orders/user/all-order');
   print('   - POST /orders/user/create');
