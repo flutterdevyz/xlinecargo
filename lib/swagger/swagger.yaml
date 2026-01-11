@@ -1,6 +1,6 @@
 openapi: 3.0.0
 info:
-  title: XLineCargo API
+  title:  UTS logistic API
   description: >
     Dart Shelf yordamida yaratilgan Cargo boshqaruv tizimi API hujjatlari.
     Barcha himoyalangan yo'llar uchun **Bearer Token** talab qilinadi.
