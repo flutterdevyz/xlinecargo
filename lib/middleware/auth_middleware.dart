@@ -2,39 +2,63 @@
 import 'package:shelf/shelf.dart';
 import '../utils/jwt.dart';
 
-// middleware/auth_middleware.dart
 Middleware authMiddleware({bool adminOnly = false}) {
   return (handler) {
     return (request) async {
       final authHeader = request.headers['Authorization'];
 
       if (authHeader == null || !authHeader.startsWith('Bearer ')) {
-        return Response.forbidden('Token required');
+        return Response.forbidden(
+          'Token required',
+          headers: {'Content-Type': 'application/json'},
+        );
       }
 
       final token = authHeader.substring(7);
 
-      try {
-        final jwt = JwtUtil.verify(token);
-
-        // Payload'dan userId ni int qilib olish (ba'zan JSON'da String kelishi mumkin)
-        final rawUserId = jwt.payload['userId'] ?? jwt.payload['user_id'];
-        final userId = int.parse(rawUserId.toString());
-        final String role = jwt.payload['role'] ?? 'user';
-
-        if (adminOnly && role != 'admin') {
-          return Response.forbidden('Admin only (Middleware level)');
-        }
-
-        return handler(
-          request.change(context: {
-            'userId': userId,
-            'role': role,
-          }),
+      // Token bo'sh yoki noto'g'ri bo'lsa null qaytaradi
+      final jwt = JwtUtil.verify(token);
+      if (jwt == null) {
+        return Response.forbidden(
+          'Invalid token',
+          headers: {'Content-Type': 'application/json'},
         );
-      } catch (e) {
-        return Response.forbidden('Invalid token or access denied');
       }
+
+      // userId va role olish
+      int? userId;
+      String role = 'user'; // default
+      try {
+        userId = JwtUtil.getUserId(token);
+        role = JwtUtil.getRole(token) ?? 'user';
+      } catch (_) {
+        // Xato bo'lsa ham null/ default
+        userId = null;
+        role = 'user';
+      }
+
+      if (userId == null) {
+        return Response.forbidden(
+          'User ID not found in token',
+          headers: {'Content-Type': 'application/json'},
+        );
+      }
+
+      if (adminOnly && role != 'admin') {
+        return Response.forbidden(
+          'Admin only (Middleware level)',
+          headers: {'Content-Type': 'application/json'},
+        );
+      }
+
+      // Request context ga qo'shish
+      return handler(
+        request.change(context: {
+          'userId': userId,
+          'role': role,
+          'token': token,
+        }),
+      );
     };
   };
 }
