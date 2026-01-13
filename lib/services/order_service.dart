@@ -24,9 +24,13 @@ class OrderService {
 
   // 2. Ma'lum bir foydalanuvchining buyurtmalarini olish
   static Future<List<Map<String, dynamic>>> getByUserId(int userId) async {
+    // 1. So'rovni o'zgaruvchiga olamiz
+    final sql = 'SELECT id, product_name, quantity, track_code, status, created_at '
+        'FROM orders WHERE user_id = @uId ORDER BY created_at DESC';
+
     final result = await Database.connection.query(
-      'SELECT id, product_name, quantity, track_code, status, created_at FROM orders WHERE user_id = @userId ORDER BY created_at DESC',
-      substitutionValues: {'userId': userId},
+      sql,
+      substitutionValues: {'uId': userId},
     );
 
     return result.map((e) => {
@@ -35,7 +39,7 @@ class OrderService {
       'quantity': e[2],
       'track_code': e[3],
       'status': e[4],
-      'created_at': e[5].toString(),
+      'created_at': e[5]?.toString(), // null xavfsizligi uchun ? belgisini qo'shdim
     }).toList();
   }
 
