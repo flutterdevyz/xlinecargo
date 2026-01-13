@@ -9,8 +9,20 @@ class OrderRoutes {
 
     // /orders/orders-all
     router.get('/user/all-order', (Request req) async {
-      final orders = await OrderService.getAll();
-      return Response.ok(jsonEncode(orders), headers: {'Content-Type': 'application/json'});
+      // 1. Middleware-dan foydalanuvchi ID-sini olamiz
+      final userId = req.context['userId'] as int?;
+
+      if (userId == null) {
+        return Response.forbidden(jsonEncode({'error': 'User ID topilmadi'}));
+      }
+
+      // 2. getAll() emas, aynan getByUserId(userId) ni chaqiramiz
+      final orders = await OrderService.getByUserId(userId);
+
+      return Response.ok(
+          jsonEncode(orders),
+          headers: {'Content-Type': 'application/json'}
+      );
     });
     router.post('/user/create', (Request req) async {
       // Middleware orqali kelgan context-dan userId olish
