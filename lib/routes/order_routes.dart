@@ -7,88 +7,85 @@ class OrderRoutes {
   Router get router {
     final router = Router();
 
-    // /orders/orders-all
+    // 1. Foydalanuvchining barcha buyurtmalarini olish
     router.get('/user/all-order', (Request req) async {
-      // Middleware-dan ID olishni har xil nomlar bilan tekshiramiz
-      final userId = req.context['userId'] ?? req.context['user_id'];
+      final userIdRaw = req.context['userId'] ?? req.context['user_id'];
 
-      if (userId == null) {
-        print("XATO: Context-da userId topilmadi. Mavjud context: ${req.context}");
+      if (userIdRaw == null) {
         return Response.forbidden(jsonEncode({'error': 'User ID topilmadi'}));
       }
 
-      // ID int ekanligiga ishonch hosil qilamiz (ba'zida String kelishi mumkin)
-      final parsedId = int.tryParse(userId.toString());
-
+      final parsedId = int.tryParse(userIdRaw.toString());
       if (parsedId == null) {
-        return Response.internalServerError(body: 'User ID formati noto\'g\'ri');
+        return Response.internalServerError(body: jsonEncode({'error': 'ID formati xato'}));
       }
 
-      final orders = await OrderService.getByUserId(parsedId);
-
-      return Response.ok(
-          jsonEncode(orders),
-          headers: {'Content-Type': 'application/json'}
-      );
+      try {
+        final orders = await OrderService.getByUserId(parsedId);
+        return Response.ok(jsonEncode(orders), headers: {'Content-Type': 'application/json'});
+      } catch (e) {
+        return Response.internalServerError(body: jsonEncode({'error': e.toString()}));
+      }
     });
+
+    // 2. Yangi buyurtma yaratish (POST xatosi shu yerda tuzatildi)
     router.post('/user/create', (Request req) async {
       try {
-        // 1. Contextdan IDni ikkala ehtimoliy nom bilan tekshirib olamiz
         final userIdRaw = req.context['userId'] ?? req.context['user_id'];
-
         if (userIdRaw == null) {
-          return Response.forbidden(jsonEncode({'error': 'User ID topilmadi, iltimos qayta kiring'}));
+          return Response.forbidden(jsonEncode({'error': 'Avtorizatsiyadan o\'ting'}));
         }
 
-        // 2. IDni int turiga o'tkazamiz
         final int userId = int.parse(userIdRaw.toString());
 
-        // 3. Body ma'lumotlarini o'qiymiz
+        // Body-ni o'qish
         final payload = await req.readAsString();
         final data = jsonDecode(payload);
 
-        // 4. Bazaga saqlaymiz
+        // Ma'lumot turlarini xavfsiz o'girish
+        final String product = data['product']?.toString() ?? 'Noma\'lum';
+        final int quantity = int.tryParse(data['quantity'].toString()) ?? 0;
+        final String trackCode = data['track_code']?.toString() ?? '';
+
         await OrderService.create(
           userId: userId,
-          product: data['product'] ?? 'Noma\'lum mahsulot',
-          quantity: data['quantity'] ?? 0,
-          trackCode: data['track_code'] ?? '',
+          product: product,
+          quantity: quantity,
+          trackCode: trackCode,
         );
 
         return Response.ok(
-          jsonEncode({'message': 'Order created successfully'}),
+          jsonEncode({'message': 'Order muvaffaqiyatli yaratildi'}),
           headers: {'Content-Type': 'application/json'},
         );
       } catch (e) {
-        print("CREATE ERROR: $e"); // Server logida xatoni ko'rish uchun
+        print("CREATE ERROR: $e"); // Debug uchun
         return Response.internalServerError(
-          body: jsonEncode({'error': 'Serverda xatolik yuz berdi'}),
+          body: jsonEncode({'error': 'Serverda xatolik: $e'}),
           headers: {'Content-Type': 'application/json'},
         );
       }
     });
-    // 3. Faqat Admin barcha buyurtmalarni ko'rishi
+
+    // 3. Admin barcha buyurtmalarni ko'rishi
     router.get('/admin/order/all', (Request req) async {
-      final role = req.context['role'] as String;
+      final role = req.context['role'] as String?;
 
       if (role != 'admin') {
-        return Response.forbidden(jsonEncode({'error': 'Admin only!'}));
+        return Response.forbidden(jsonEncode({'error': 'Admin huquqi kerak!'}));
       }
 
       final orders = await OrderService.getAll();
-      return Response.ok(
-        jsonEncode(orders),
-        headers: {'Content-Type': 'application/json'},
-      );
+      return Response.ok(jsonEncode(orders), headers: {'Content-Type': 'application/json'});
     });
 
-    // 4. Track kodi orqali qidirish (Hamma uchun)
-// /orders/track/<code>
+    // 4. Track kod orqali qidirish
     router.get('/user/track/<code>', (Request req, String code) async {
       final order = await OrderService.track(code);
-      if (order == null) return Response.notFound(jsonEncode({'error': 'Topilmadi'}));
+      if (order == null) return Response.notFound(jsonEncode({'error': 'Buyurtma topilmadi'}));
       return Response.ok(jsonEncode(order), headers: {'Content-Type': 'application/json'});
     });
+
     return router;
   }
 }
