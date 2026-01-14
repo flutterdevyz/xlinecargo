@@ -10,8 +10,8 @@ class OrderService {
   }) async {
     await Database.connection.query(
       '''
-      INSERT INTO orders (user_id, product_name, quantity, track_code)
-      VALUES (@userId, @product, @quantity, @track)
+      INSERT INTO orders (user_id, product_name, quantity, track_code, status)
+      VALUES (@userId, @product, @quantity, @track, 'created')
       ''',
       substitutionValues: {
         'userId': userId,
@@ -22,14 +22,10 @@ class OrderService {
     );
   }
 
-  // 2. Ma'lum bir foydalanuvchining buyurtmalarini olish
+  // 2. Foydalanuvchi ID bo'yicha buyurtmalarni olish
   static Future<List<Map<String, dynamic>>> getByUserId(int userId) async {
-    // 1. So'rovni o'zgaruvchiga olamiz
-    final sql = 'SELECT id, product_name, quantity, track_code, status, created_at '
-        'FROM orders WHERE user_id = @uId ORDER BY created_at DESC';
-
     final result = await Database.connection.query(
-      sql,
+      'SELECT id, product_name, quantity, track_code, status, created_at FROM orders WHERE user_id = @uId ORDER BY created_at DESC',
       substitutionValues: {'uId': userId},
     );
 
@@ -39,11 +35,11 @@ class OrderService {
       'quantity': e[2],
       'track_code': e[3],
       'status': e[4],
-      'created_at': e[5]?.toString(), // null xavfsizligi uchun ? belgisini qo'shdim
+      'created_at': e[5]?.toString(),
     }).toList();
   }
 
-  // 3. Admin uchun barcha buyurtmalarni olish
+  // 3. Barcha buyurtmalarni olish (Admin uchun)
   static Future<List<Map<String, dynamic>>> getAll() async {
     final result = await Database.connection.query(
       'SELECT id, product_name, quantity, track_code, status, created_at, user_id FROM orders ORDER BY created_at DESC',
@@ -55,12 +51,12 @@ class OrderService {
       'quantity': e[2],
       'track_code': e[3],
       'status': e[4],
-      'created_at': e[5].toString(),
+      'created_at': e[5]?.toString(),
       'user_id': e[6],
     }).toList();
   }
 
-  // 4. Track kodi orqali qidirish
+  // 4. Track kod orqali qidirish
   static Future<Map<String, dynamic>?> track(String code) async {
     final result = await Database.connection.query(
       'SELECT product_name, quantity, status FROM orders WHERE track_code = @code',
@@ -76,11 +72,14 @@ class OrderService {
     };
   }
 
-  // 5. Statusni yangilash
+  // 5. Statusni yangilash (Sizda yetishmayotgan metod mana shu!)
   static Future<void> updateStatus(int orderId, String status) async {
     await Database.connection.query(
       'UPDATE orders SET status = @status WHERE id = @id',
-      substitutionValues: {'status': status, 'id': orderId},
+      substitutionValues: {
+        'status': status,
+        'id': orderId
+      },
     );
   }
 }
